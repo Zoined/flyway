@@ -19,7 +19,11 @@ import org.flywaydb.core.internal.dbsupport.JdbcTemplate;
 import org.flywaydb.core.internal.dbsupport.Schema;
 import org.flywaydb.core.internal.dbsupport.Table;
 import org.flywaydb.core.internal.dbsupport.Type;
-import org.flywaydb.core.internal.dbsupport.postgresql.PostgreSQLTable;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -164,14 +168,14 @@ public class VerticaSchema extends Schema<VerticaDbSupport> {
 
         Table[] tables = new Table[tableNames.size()];
         for (int i = 0; i < tableNames.size(); i++) {
-            tables[i] = new PostgreSQLTable(jdbcTemplate, dbSupport, this, tableNames.get(i));
+            tables[i] = new VerticaTable(jdbcTemplate, dbSupport, this, tableNames.get(i));
         }
         return tables;
     }
 
     @Override
     public Table getTable(String tableName) {
-        return new PostgreSQLTable(jdbcTemplate, dbSupport, this, tableName);
+        return new VerticaTable(jdbcTemplate, dbSupport, this, tableName);
     }
 
 }
