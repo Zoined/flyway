@@ -15,18 +15,19 @@
  */
 package org.flywaydb.core.internal.dbsupport.vertica;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import org.flywaydb.core.internal.dbsupport.JdbcTemplate;
 import org.flywaydb.core.internal.dbsupport.Schema;
 import org.flywaydb.core.internal.dbsupport.Table;
 import org.flywaydb.core.internal.dbsupport.Type;
 import org.flywaydb.core.internal.dbsupport.postgresql.PostgreSQLTable;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 public class VerticaSchema extends Schema<VerticaDbSupport> {
+    private Boolean exists = null;
 
     public VerticaSchema(JdbcTemplate jdbcTemplate, VerticaDbSupport dbSupport, String name) {
         super(jdbcTemplate, dbSupport, name);
@@ -34,7 +35,22 @@ public class VerticaSchema extends Schema<VerticaDbSupport> {
 
     @Override
     protected boolean doExists() throws SQLException {
-        return jdbcTemplate.queryForInt("SELECT COUNT(*) FROM v_catalog.schemata WHERE schema_name=?", name) > 0;
+        if (exists == null) {
+            // Querying data from v_catalog is really slow if there are lot of tables in database.
+            // Trying to access table and failing is a lot faster.
+            try {
+                jdbcTemplate.execute("SELECT 1 FROM " + dbSupport.quote(name, "sometable") + " LIMIT 1");
+                exists = true;
+            } catch (SQLException e) {
+                if (e.getErrorCode() == 4650) { // schema not found
+                    exists = false;
+                } else if (e.getErrorCode() == 4568) { // relation not found, i.e. schema exists but not table
+                    exists = true;
+                } else
+                    throw e;
+            }
+        }
+        return exists;
     }
 
     @Override
@@ -48,11 +64,13 @@ public class VerticaSchema extends Schema<VerticaDbSupport> {
     @Override
     protected void doCreate() throws SQLException {
         jdbcTemplate.execute("CREATE SCHEMA " + dbSupport.quote(name));
+        exists = true;
     }
 
     @Override
     protected void doDrop() throws SQLException {
         jdbcTemplate.execute("DROP SCHEMA " + dbSupport.quote(name) + " CASCADE");
+        exists = false;
     }
 
     @Override
