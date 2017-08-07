@@ -36,19 +36,7 @@ public class VerticaSchema extends Schema<VerticaDbSupport> {
     @Override
     protected boolean doExists() throws SQLException {
         if (exists == null) {
-            // Querying data from v_catalog is really slow if there are lot of tables in database.
-            // Trying to access table and failing is a lot faster.
-            try {
-                jdbcTemplate.execute("SELECT 1 FROM " + dbSupport.quote(name, "sometable") + " LIMIT 1");
-                exists = true;
-            } catch (SQLException e) {
-                if (e.getErrorCode() == 4650) { // schema not found
-                    exists = false;
-                } else if (e.getErrorCode() == 4568) { // relation not found, i.e. schema exists but not table
-                    exists = true;
-                } else
-                    throw e;
-            }
+						exists = jdbcTemplate.queryForInt("SELECT COUNT(*) FROM v_catalog.schemata WHERE schema_name=?", name) > 0;
         }
         return exists;
     }
