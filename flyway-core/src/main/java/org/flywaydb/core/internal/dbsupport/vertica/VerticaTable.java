@@ -15,6 +15,7 @@
  */
 package org.flywaydb.core.internal.dbsupport.vertica;
 
+import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.internal.dbsupport.DbSupport;
 import org.flywaydb.core.internal.dbsupport.JdbcTemplate;
 import org.flywaydb.core.internal.dbsupport.Schema;
@@ -26,7 +27,6 @@ import java.sql.SQLException;
  * Vertica-specific table.
  */
 public class VerticaTable extends Table {
-    private Boolean exists = null;
     /**
      * Creates a new Vertica table.
      *
@@ -42,29 +42,41 @@ public class VerticaTable extends Table {
     @Override
     protected void doDrop() throws SQLException {
         jdbcTemplate.execute("DROP TABLE " + dbSupport.quote(schema.getName(), name) + " CASCADE");
-        exists = false;
     }
 
     @Override
     protected boolean doExists() throws SQLException {
-        if(exists == null) {
-            // Querying tables from v_catalog is really slow if there are lot of tables in database.
-            // Trying to access table and failing is a lot faster.
-            try {
-                jdbcTemplate.execute("SELECT 1 FROM " + this + " LIMIT 1");
-                exists = true;
-            } catch (SQLException e) {
-                if (e.getErrorCode() == 4650 || e.getErrorCode() == 4656 || e.getErrorCode() == 4568)
-                    exists = false;
-                else
-                    throw e;
-            }
+        // Querying tables from v_catalog is really slow if there are lot of tables in database.
+        // Trying to access table and failing is a lot faster.
+        try {
+            jdbcTemplate.execute("SELECT 1 FROM " + this + " LIMIT 1");
+            return true;
+        } catch (SQLException e) {
+            if (e.getErrorCode() == 4650 || e.getErrorCode() == 4656 || e.getErrorCode() == 4568)
+                return false;
+            else
+                throw e;
         }
-        return exists;
     }
 
     @Override
     protected void doLock() throws SQLException {
         jdbcTemplate.execute("SELECT * FROM " + this + " FOR UPDATE");
+    }
+
+    @Override
+    public boolean hasColumn(String column) {
+        // Querying tables from v_catalog is really slow if there are lot of tables in database.
+        // Trying to access table and failing is a lot faster.
+        try {
+            jdbcTemplate.execute("SELECT "+column+" FROM " + this + " LIMIT 1");
+            return true;
+        } catch (SQLException e) {
+            if (e.getErrorCode() == 2624)
+                return false;
+            else
+                throw new FlywayException("Unable to check whether table " + this + " has a column named " + column+". Error code "+e.getErrorCode(), e);
+
+        }
     }
 }
