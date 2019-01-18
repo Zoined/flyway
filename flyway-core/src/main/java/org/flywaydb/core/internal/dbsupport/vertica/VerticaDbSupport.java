@@ -76,7 +76,7 @@ public class VerticaDbSupport extends DbSupport {
                 //     name     |                      setting
                 // -------------+---------------------------------------------------
                 // search_path | "$user", public, v_catalog, v_monitor, v_internal
-                return rs.getString("setting");
+                return rs.getString("setting").replaceAll("\\bv_\\w+,?", "").trim().replaceFirst(",$", "");
             }
 
         }).get(0);
@@ -89,8 +89,9 @@ public class VerticaDbSupport extends DbSupport {
         }
 
         try {
-            if (StringUtils.hasText(originalSchema)) {
-                doChangeCurrentSchemaTo(schema.toString() + "," + originalSchema);
+			String strippedOriginal = originalSchema.replaceAll("\\bv_\\w+,?", "").trim();
+            if (StringUtils.hasText(strippedOriginal)) {
+                doChangeCurrentSchemaTo(schema.toString() + "," + strippedOriginal);
             } else {
                 doChangeCurrentSchemaTo(schema.toString());
             }
