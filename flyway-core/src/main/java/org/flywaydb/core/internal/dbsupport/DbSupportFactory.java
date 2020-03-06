@@ -84,7 +84,7 @@ public class DbSupportFactory {
         if (databaseProductName.startsWith("Microsoft SQL Server")) {
             return new SQLServerDbSupport(connection);
         }
-        if (databaseProductName.contains("MySQL")) {
+        if (databaseProductName.contains("MySQL") || databaseProductName.contains("MariaDB")) {
             // For regular MySQL, MariaDB and Google Cloud SQL.
             // Google Cloud SQL returns different names depending on the environment and the SDK version.
             //   ex.: Google SQL Service/MySQL
